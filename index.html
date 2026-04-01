@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gus HQ — Memory Dashboard</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #d2a8ff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+  }
+  .header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 20px 24px; position: sticky; top: 0; z-index: 100;
+  }
+  .header h1 { font-size: 1.5rem; font-weight: 600; }
+  .header h1 span { color: var(--accent); }
+  .header p { color: var(--muted); font-size: 0.875rem; margin-top: 4px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+  .stats-bar { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 20px; flex: 1; min-width: 140px;
+  }
+  .stat-card .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+  .blue { color: var(--accent); }
+  .green { color: var(--accent2); }
+  .purple { color: var(--accent3); }
+  .search-bar {
+    width: 100%; padding: 12px 16px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+    font-size: 0.95rem; margin-bottom: 24px; outline: none;
+  }
+  .search-bar:focus { border-color: var(--accent); }
+  .search-bar::placeholder { color: var(--muted); }
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 10px 16px; cursor: pointer; color: var(--muted);
+    font-size: 0.9rem; font-weight: 500; border-bottom: 2px solid transparent;
+    transition: all 0.2s; user-select: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .day-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; margin-bottom: 12px; overflow: hidden; transition: border-color 0.2s;
+  }
+  .day-card:hover { border-color: var(--accent); }
+  .day-card-header {
+    padding: 16px 20px; cursor: pointer; display: flex;
+    justify-content: space-between; align-items: center; user-select: none;
+  }
+  .day-card-header h3 { font-size: 1rem; font-weight: 600; }
+  .date-badge {
+    background: var(--bg); color: var(--accent); padding: 4px 10px;
+    border-radius: 12px; font-size: 0.8rem; font-weight: 500;
+  }
+  .day-card-body { padding: 0 20px 16px; display: none; }
+  .day-card.open .day-card-body { display: block; }
+  .day-card-body h4 {
+    color: var(--accent2); font-size: 0.85rem; text-transform: uppercase;
+    letter-spacing: 0.05em; margin: 12px 0 6px;
+  }
+  .day-card-body h4:first-child { margin-top: 0; }
+  .day-card-body ul { list-style: none; padding: 0; }
+  .day-card-body li {
+    padding: 4px 0; padding-left: 16px; position: relative;
+    color: var(--muted); font-size: 0.9rem;
+  }
+  .day-card-body li::before { content: '→'; position: absolute; left: 0; color: var(--accent); }
+  .day-card-body p { color: var(--muted); font-size: 0.9rem; margin: 4px 0; }
+  .summary-preview { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+  .chevron { transition: transform 0.2s; color: var(--muted); }
+  .day-card.open .chevron { transform: rotate(180deg); }
+  .ltm-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px; margin-bottom: 12px;
+  }
+  .ltm-card h4 {
+    color: var(--accent3); font-size: 0.85rem; text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 8px;
+  }
+  .ltm-card ul { list-style: none; padding: 0; }
+  .ltm-card li {
+    padding: 4px 0; padding-left: 16px; position: relative;
+    color: var(--muted); font-size: 0.9rem;
+  }
+  .ltm-card li::before { content: '•'; position: absolute; left: 0; color: var(--accent3); }
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
+  @media (max-width: 600px) { .stats-bar { flex-direction: column; } .container { padding: 16px; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🧠 <span>Gus HQ</span> — Memory Dashboard</h1>
+  <p>Daily logs & long-term memory · Brian + AI</p>
+</div>
+<div class="container">
+  <div class="stats-bar">
+    <div class="stat-card"><div class="label">Days Logged</div><div class="value blue" id="totalDays">—</div></div>
+    <div class="stat-card"><div class="label">Total Events</div><div class="value green" id="totalEvents">—</div></div>
+    <div class="stat-card"><div class="label">Open Items</div><div class="value purple" id="totalOpen">—</div></div>
+  </div>
+  <input type="text" class="search-bar" id="searchInput" placeholder="Search across all logs and memory...">
+  <div class="tab-bar">
+    <div class="tab active" data-tab="daily">📅 Daily Logs</div>
+    <div class="tab" data-tab="memory">🧠 Long-Term Memory</div>
+  </div>
+  <div class="tab-content active" id="tab-daily"><div id="dailyLogs"></div></div>
+  <div class="tab-content" id="tab-memory"><div id="ltm"></div></div>
+</div>
+<script>
+var DAILY_LOGS = [
+  {
+    "date": "2026-04-01",
+    "content": "# 2026-04-01 \u2014 Day 3\n\n## Summary\nBrian requested a daily memory/logging system with a web-accessible dashboard. Built out the full system: daily logs, long-term memory, and a static HTML dashboard hosted via the workspace.\n\n## Key Events\n- Set up daily logging system (memory/YYYY-MM-DD.md)\n- Created MEMORY.md for long-term curated memory\n- Built web dashboard for Brian to browse logs\n\n## Decisions\n- Dashboard served as static HTML from workspace\n- Daily logs include: summary, key events, decisions, open items, project updates\n\n## Open Items\n- Dashboard URL to share with Brian"
+  },
+  {
+    "date": "2026-03-30",
+    "content": "# 2026-03-30 \u2014 Day 1\n\n## Summary\nFirst interaction. Set up workspace, discussed the $5K \u2192 max money challenge. Launched \"Apex Digital Co\" as brand name.\n\n## Key Events\n- Brian and I started working together\n- Established the $5K challenge parameters\n- Brian handles real-world execution (accounts, payments, delivery)\n- I handle all digital production\n\n## Decisions\n- Brand name: Apex Digital Co\n\n## Open Items\n- Challenge execution in progress"
+  }
+];
+
+var LTM = "# Long-Term Memory\n\n## People\n- **Brian Collins** \u2014 My human. Entrepreneurial, action-oriented, high risk tolerance. Prefers independence. Async communication style.\n\n## Projects\n- **$5K Challenge** \u2014 $5K \u2192 max money challenge. Launched \"Apex Digital Co\" brand on Day 1 (2026-03-30).\n- Brian handles account creation, payments, delivery. I produce the work.\n\n## Key Decisions\n- 2026-03-30: Launched Apex Digital Co brand\n- 2026-04-01: Set up daily memory/logging system with web dashboard\n\n## Lessons Learned\n\n## Preferences\n- Brian wants accessible dashboard (not running on his local machine)\n- Prefers direct, no-fluff communication";
+
+function parseDailyLog(raw) {
+  var lines = raw.split("\n"), result = {title:"",summary:"",sections:{}}, cur = null;
+  for (var i = 0; i < lines.length; i++) {
+    var l = lines[i];
+    if (l.startsWith("# ")) result.title = l.slice(2);
+    else if (l.startsWith("## ")) { cur = l.slice(3); result.sections[cur] = []; }
+    else if (l.startsWith("- ") && cur) result.sections[cur].push(l.slice(2));
+    else if (l.trim() && cur && !l.startsWith("#")) result.sections[cur].push(l.trim());
+  }
+  if (result.sections.Summary) { result.summary = result.sections.Summary.join(" "); delete result.sections.Summary; }
+  return result;
+}
+
+function parseLTM(raw) {
+  var lines = raw.split("\n"), sections = {}, cur = null;
+  for (var i = 0; i < lines.length; i++) {
+    var l = lines[i];
+    if (l.startsWith("## ")) { cur = l.slice(3); sections[cur] = []; }
+    else if (l.startsWith("- ") && cur) sections[cur].push(l.slice(2));
+  }
+  return sections;
+}
+
+function renderDaily(filter) {
+  var c = document.getElementById("dailyLogs"), f = filter ? filter.toLowerCase() : "";
+  var filtered = DAILY_LOGS.filter(function(d) { return !f || d.content.toLowerCase().indexOf(f) >= 0; });
+  if (!filtered.length) { c.innerHTML = '<div class="empty-state"><p>No logs found</p></div>'; return; }
+  var te = 0, to = 0;
+  c.innerHTML = filtered.map(function(day) {
+    var p = parseDailyLog(day.content);
+    var ev = p.sections["Key Events"] || []; var oi = p.sections["Open Items"] || [];
+    te += ev.length; to += oi.length;
+    var sh = Object.keys(p.sections).map(function(k) {
+      return "<h4>" + k + "</h4><ul>" + p.sections[k].map(function(i) { return "<li>" + i + "</li>"; }).join("") + "</ul>";
+    }).join("");
+    return '<div class="day-card" onclick="this.classList.toggle(\'open\')"><div class="day-card-header"><div><h3>' +
+      p.title + '</h3><div class="summary-preview">' + p.summary.substring(0,120) +
+      '</div></div><div style="display:flex;align-items:center;gap:12px"><span class="date-badge">' +
+      day.date + '</span><span class="chevron">▼</span></div></div><div class="day-card-body">' +
+      (p.summary ? "<p>" + p.summary + "</p>" : "") + sh + "</div></div>";
+  }).join("");
+  document.getElementById("totalDays").textContent = filtered.length;
+  document.getElementById("totalEvents").textContent = te;
+  document.getElementById("totalOpen").textContent = to;
+}
+
+function renderLTM(filter) {
+  var c = document.getElementById("ltm"), sections = parseLTM(LTM);
+  var f = filter ? filter.toLowerCase() : "";
+  var html = Object.keys(sections).map(function(k) {
+    var items = sections[k].filter(function(i) { return !f || i.toLowerCase().indexOf(f) >= 0; });
+    if (f && !items.length) return "";
+    return '<div class="ltm-card"><h4>' + k + '</h4><ul>' +
+      (items.length ? items : sections[k]).map(function(i) { return "<li>" + i + "</li>"; }).join("") + "</ul></div>";
+  }).filter(Boolean).join("");
+  c.innerHTML = html || '<div class="empty-state"><p>No memory entries</p></div>';
+}
+
+document.querySelectorAll(".tab").forEach(function(t) {
+  t.addEventListener("click", function() {
+    document.querySelectorAll(".tab").forEach(function(x) { x.classList.remove("active"); });
+    document.querySelectorAll(".tab-content").forEach(function(x) { x.classList.remove("active"); });
+    t.classList.add("active");
+    document.getElementById("tab-" + t.dataset.tab).classList.add("active");
+  });
+});
+document.getElementById("searchInput").addEventListener("input", function(e) {
+  renderDaily(e.target.value); renderLTM(e.target.value);
+});
+renderDaily(); renderLTM();
+</script>
+</body>
+</html>
